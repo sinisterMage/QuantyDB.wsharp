@@ -1,0 +1,5 @@
+# Written by `ingot resolve` and `ingot install`. Both are derived from
+# `ingot.toml` and the registry, and a library has no business pinning its
+# consumers' versions.
+ingot.lock
+ingot.env

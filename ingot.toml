@@ -1,0 +1,9 @@
+[package]
+name = "quantydb/client"
+version = "0.1.0"
+root = "src/quantydb.ws"
+
+# Nothing but `std`. The protocol is plain TCP with no TLS and no crypto -- the
+# token crosses the wire as characters and the server hashes it -- so there is
+# nothing to depend on.
+[dependencies]
