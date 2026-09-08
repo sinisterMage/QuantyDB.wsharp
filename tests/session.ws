@@ -26,6 +26,10 @@
 // expect: 3|ccc
 // expect: rows arrived across two batches: 3
 // expect: the terminal answer is the result: 3
+// expect: 1|a
+// expect: 2|bb
+// expect: 3|ccc
+// expect: next_row walked the same three: 3
 // expect: collected at once: 1|a
 // expect: a statement the server refused: boom
 // expect: refused with the parse error code: true
@@ -170,6 +174,22 @@ fn main() i64 {
     shows("rows arrived across two batches", text.from_int(seen));
     shows("the terminal answer is the result",
         text.from_int(db.kind(db.finish(cur) catch return 9)));
+    skip(p);
+
+    // The same walk in one call per row. `!?Row` is a row, the end, or a
+    // failure, and a `while` capture is the loop it asks for.
+    say(p, ROWS_BEGIN);
+    say(p, BATCH_TWO);
+    say(p, BATCH_ONE);
+    say(p, ROWS_END);
+    const walk = db.cursor(c, "get t { id, name }") catch return 20;
+    var counted = 0;
+    while (db.next_row(walk) catch return 21) |r| {
+        print(text.concat(db.render(r.values[0]), text.concat("|", db.render(r.values[1]))));
+        counted += 1;
+    }
+    shows("next_row walked the same three", text.from_int(counted));
+    const _drained = db.finish(walk) catch return 22;
     skip(p);
 
     // The same shape, collected in one call.

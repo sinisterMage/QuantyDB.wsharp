@@ -36,11 +36,13 @@ pub const Blob = struct : Value { b: []u8 };
 // Constructors
 // ---------------------------------------------------------------------------
 //
-// These answer `Value` rather than the subtype, and that is not a convenience:
-// W# coerces a subtype to its supertype, and a value to an `!T` or a `?T`, but
-// it will not do both in one step. A `return Null{ }` from a function declared
-// `!Value` is a type error. Going through here is what makes the one place
-// that has to know it be this comment.
+// These answer `Value` rather than the subtype, and they are a convenience
+// now. They were not: W# coerced a subtype to its supertype, and a value into
+// an `!T`, and would not do both in one step -- so `return Null{ }` from a
+// function declared `!Value` was a type error and this was the bridge. A
+// coercion is a sequence of steps now, so `decode` could return the subtypes
+// straight out; these stay because naming the case reads better at a call site
+// than a struct literal does, and because they are the public surface.
 
 pub fn null_value() Value { return Null{ }; }
 pub fn bool_value(v: bool) Value { return Bool{ .b = v }; }
@@ -179,11 +181,12 @@ pub fn decode(r: wire.Reader) !Value {
 
 /// A `u32` count of values and that many of them -- one row.
 ///
-/// An array rather than a `list.List`, and that is deliberate: `for` over a
-/// list whose elements are structs does not resolve their type in W# 0.1.1, so
-/// a caller writing the obvious loop over a list of values would get the wrong
-/// overload of `render` without a diagnostic. Over an array it is correct.
-/// See the note in README.md.
+/// An array rather than a `list.List`, because the width is known before the
+/// first value is read and a list would grow into a capacity it does not need.
+/// It used to be for a worse reason as well: `for` over a list of structs did
+/// not resolve the loop variable's type, so the obvious loop got the wrong
+/// overload of `render` with no diagnostic. That is fixed, and either would be
+/// correct now.
 pub fn decode_row(r: wire.Reader) ![]Value {
     const width = try wire.count(r, wire.MAX_VALUES_PER_ROW);
     var out: []Value = array.new(width);

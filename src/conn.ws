@@ -20,13 +20,14 @@
 // thing that does take a number of milliseconds: a `Poller`.
 //
 // The socket stays *blocking* and the poller is a gate in front of it, rather
-// than the other way round. Making the socket non-blocking would be the
-// obvious move and it is the wrong one here: every read and write would then
-// have to tell `error.WouldBlock` apart from a real failure and re-raise the
-// rest, and W# has no way to re-raise a caught error -- a bound `e` cannot be
-// returned from a function whose type is `!T`. Gating a blocking read on a
-// readiness report needs none of that: when the poller says there is
-// something, the read that follows returns it without waiting.
+// than the other way round. Making the socket non-blocking would be the obvious
+// move and it is still the wrong one here: every read and write would have to
+// tell `error.WouldBlock` apart from a real failure and hand the rest on. W#
+// can say that now -- a caught `e` may be returned from an `!T` function -- so
+// it is a question of how much code rather than of what the language allows,
+// and gating a blocking read on a readiness report needs none of it: when the
+// poller says there is something, the read that follows returns it without
+// waiting.
 //
 // The result is an *idle* timeout -- no byte for this long -- rather than a
 // deadline for the whole answer. That is the same guarantee `SO_RCVTIMEO`

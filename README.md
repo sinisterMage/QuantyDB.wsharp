@@ -18,8 +18,7 @@ fn main() i64 {
 
     const cur = db.cursor(c, "get users { name, score } where score > 10") catch return 2;
     print(text.join(db.columns(cur), " | "));
-    while (db.advance(cur) catch return 3) {
-        const r = db.row(cur);
+    while (db.next_row(cur) catch return 3) |r| {
         print(db.render(r.values[0]));
     }
 
@@ -37,6 +36,11 @@ ingot resolve && ingot install
 
 Then `@import("quantydb/client")`. There is a runnable example in
 `examples/hello.ws`.
+
+**Needs W# 0.1.2 or newer.** `ingot.toml` has no field for saying so, so it is
+said here: the value decoder uses `bits.f64_from_bits`, and `next_row` answers
+`!?Row`, neither of which 0.1.1 could compile. Both arrived because writing this
+driver is what found them missing.
 
 ## The API
 
@@ -67,10 +71,20 @@ db.query_sql(c, statement) !Answer      // the SQL front end
 db.cursor(c, statement) !Cursor         // rows streamed a batch at a time
 db.cursor_sql(c, statement) !Cursor
 db.columns(cur) []str
-db.advance(cur) !bool                   // load the next row
+db.next_row(cur) !?Row                  // the next row, or null at the end
+db.advance(cur) !bool                   // the same, read out in two calls
 db.row(cur) Row                         // the row advance last loaded
 db.finish(cur) !Answer                  // drain the rest, and the terminal answer
 ```
+
+`next_row` is the loop:
+
+```wsharp
+while (try db.next_row(cur)) |r| { print(db.render(r.values[0])); }
+```
+
+`advance` and `row` are the same state machine read out in two calls, which is
+what a caller who wants the row index alongside writes anyway.
 
 A connection carries **one statement at a time** — the protocol has no request
 ids and cannot interleave answers — so a cursor must be read to its end before
@@ -120,24 +134,13 @@ The accessors are strict: an `Int` is not an `f64` here and a `Bool` is not a
 one. A driver that widens quietly turns a schema change into a wrong number
 rather than an error.
 
-## Two things about W# worth knowing
-
-**Do not `for` over a `list.List` of structs.** In W# 0.1.1 the loop variable's
-type is not resolved: field access fails to compile, and — worse — a call that
-dispatches on a subtype silently picks the wrong overload with no diagnostic.
-Both `for` over a `[]T` array and `while (list.next(it)) |v|` are correct. This
-driver hands out arrays everywhere for that reason (`Rows.rows` is `[]Row`,
-`Row.values` is `[]Value`), so the obvious loop is the right one:
+This driver hands out arrays everywhere (`Rows.rows` is `[]Row`, `Row.values`
+is `[]Value`), so the obvious loop is the right one:
 
 ```wsharp
-for (rows) |r| { ... }                       // fine: []Row
-for (r.values) |v| { print(db.render(v)); }  // fine: []Value, dispatches correctly
+for (rows) |r| { ... }
+for (r.values) |v| { print(db.render(v)); }
 ```
-
-**Coercion does not chain.** W# will turn a subtype into its supertype, and a
-value into an `!T`, but not both in one step — `return Int{ .n = 1 };` from a
-function declared `!Value` is a type error. `db.int_value(1)` and friends exist
-to be that bridge.
 
 ## Limitations
 
@@ -152,9 +155,6 @@ to be that bridge.
   is a failure; a slow answer that keeps arriving is not. `std/time` counts
   whole seconds, so this is the only promise a clock this coarse can keep. It is
   also exactly what `SO_RCVTIMEO` gives the reference client.
-- **A NaN loses its payload bits.** W# offers no way to observe or construct
-  them, so every NaN arrives as the canonical one. Both infinities, both zeroes
-  and every finite value are exact.
 - **Floats of extreme magnitude render differently.** The server writes `1e308`;
   W# has no exponent notation and writes the full decimal expansion. The value
   is identical.

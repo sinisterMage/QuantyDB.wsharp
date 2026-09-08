@@ -21,7 +21,8 @@ const wire = @import("./wire.ws");
 
 /// One row of a result.
 ///
-/// An array rather than a `list.List`: see the note on `value.decode_row`.
+/// An array rather than a `list.List`: see the note on `value.decode_row`. The
+/// width arrives before the values do.
 pub const Row = struct { values: []value.Value };
 
 pub const Answer = struct { };
@@ -61,9 +62,9 @@ pub fn failed(a: Failed) bool { return true; }
 // Constructors
 // ---------------------------------------------------------------------------
 //
-// Answering `Answer` rather than the subtype, for `value.ws`'s reason: W# will
-// coerce a subtype to its supertype, and a value into an `!T`, but not both in
-// one step.
+// Answering `Answer` rather than the subtype, for `value.ws`'s reason -- which
+// is now that it reads better at a call site, rather than that the language
+// could not compose the two coercions.
 
 pub fn ok_answer() Answer { return Ok{ }; }
 pub fn count_answer(verb: str, n: u64) Answer { return Count{ .verb = verb, .n = n }; }

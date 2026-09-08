@@ -74,8 +74,7 @@ fn main() i64 {
         return 1;
     };
     shows("columns", text.join(db.columns(cur), ","));
-    while (db.advance(cur) catch return 1) {
-        const r = db.row(cur);
+    while (db.next_row(cur) catch return 1) |r| {
         var cells: []str = array.new(array.len(r.values));
         var i = 0;
         while (i < array.len(r.values)) : (i += 1) { cells[i] = db.render(r.values[i]); }

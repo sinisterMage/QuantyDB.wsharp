@@ -32,8 +32,7 @@ fn main() i64 {
         return 2;
     };
     print(text.join(db.columns(cur), " | "));
-    while (db.advance(cur) catch return 3) {
-        const r = db.row(cur);
+    while (db.next_row(cur) catch return 3) |r| {
         print(text.concat(db.render(r.values[0]), text.concat(" | ", db.render(r.values[1]))));
     }
 

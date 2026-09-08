@@ -61,6 +61,11 @@ pub const query_sql = statement.query_sql;
 pub const cursor = statement.cursor;
 pub const cursor_sql = statement.cursor_sql;
 
+/// A row, the end, or a failure -- in one call.
+pub const next_row = statement.next_row;
+
+/// The same state machine read out in two, which is what a caller wanting the
+/// row index alongside writes.
 pub const advance = statement.advance;
 pub const row = statement.row;
 pub const columns = statement.columns;
@@ -131,14 +136,15 @@ pub const float_value = values.float_value;
 pub const text_value = values.text_value;
 pub const blob_value = values.blob_value;
 
-/// One rendering for both, because a caller printing an answer and a caller
-/// printing a cell want the same function name.
-///
-/// Written out rather than re-exported: `render` is an overload set in each of
-/// two modules, and a facade binds one name to one thing. Forwarding is what
-/// merges them, and dispatch still reaches every member of both.
-pub fn render(v: values.Value) str { return values.render(v); }
-pub fn render(a: answer.Answer) str { return answer.render(a); }
+// One rendering for both, because a caller printing an answer and a caller
+// printing a cell want the same function name.
+//
+// Two re-exports of one name, which merge into one overload set. This used to
+// be a forwarding function per side -- `render` is an overload set in each of
+// two modules, and a facade bound one name to one thing -- and the forwarding
+// said what these two lines say.
+pub const render = values.render;
+pub const render = answer.render;
 
 // ---------------------------------------------------------------------------
 // The protocol's own numbers

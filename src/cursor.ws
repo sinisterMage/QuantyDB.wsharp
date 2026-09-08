@@ -13,12 +13,17 @@
 // The cursor recognises which of the two shapes it has from the first frame
 // back and takes the corresponding path.
 //
-// The loop is `advance` then `row` rather than one call answering `?Row`,
-// which would have read better. `!?Row` is the type that shape needs, and W#
-// 0.1.1 parses it but cannot compile it: an error union wrapping an optional
-// wrapping a value is three machine words of return, and Cranelift is asked
-// for more return registers than it has. `!bool` and a separate accessor is
-// the same state machine with a return type that fits.
+// There are two ways to walk one. `next_row` answers `!?Row` -- a row, the end,
+// or a failure, in one call -- which is the shape this wanted from the start
+// and could not have: an error union wrapping an optional wrapping a value is
+// three machine words of return, and W# had no way to hand back more than two.
+// It does now, through a pointer the caller provides, so the type compiles and
+// the loop is one call.
+//
+// `advance` and `row` are the same state machine read out in two calls, and
+// stay: they are the published surface, `while (advance)` is what a caller who
+// wants the index alongside writes anyway, and neither costs the other
+// anything -- `next_row` is those two functions with an `if`.
 const array = @import("std/array");
 const list = @import("std/list");
 const conn = @import("./conn.ws");
@@ -143,6 +148,21 @@ pub fn advance(cur: Cursor) !bool {
         }
     }
     return false;
+}
+
+/// The next row, or null at the end.
+///
+/// `advance` and `row` in one call, which is the shape a `while` capture wants:
+///
+/// ```wsharp
+/// while (try db.next_row(cur)) |r| { ... }
+/// ```
+///
+/// The same state machine either way -- this is the two of them with an `if` --
+/// so a caller that wants the row index alongside can still write the pair.
+pub fn next_row(cur: Cursor) !?message.Row {
+    if (try advance(cur)) { return row(cur); }
+    return null;
 }
 
 /// The row `advance` last loaded.
